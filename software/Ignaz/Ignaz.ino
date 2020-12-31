@@ -30,7 +30,7 @@ const uint8_t servoPins[] = {
 Servo servo[PWM_SERVOS];
 uint8_t isrServo[GPIO_SERVOS];
 
-uint8_t servoPosition[SERVOS + 1];
+uint8_t servoPosition[SERVOS];
 
 const uint8_t zeroPosition[SERVOS + 1] PROGMEM = {
 // 0   1   2    3   4    5   6   7   8    9  10   11  12   13  14   15  16  17  18  19 ms
@@ -44,17 +44,17 @@ const uint8_t idlePosition[SERVOS + 1] PROGMEM = {
 
 const uint8_t clapHandsSteps = 10;
 uint8_t clapHands [clapHandsSteps][SERVOS + 1] PROGMEM = {
-// 0   1   2    3   4    5    6   7    8   9   10   11  12   13  14   15  16  17  18  19   ms
-{ 70, 90, 60, 120, 60, 145, 135, 90,  90, 45,  35, 120, 60, 120, 90, 110, 90, 90, 90, 90,  50 },  // 1
-{ 70, 90, 60, 120, 60,  55, 135, 90,  90, 45, 118, 120, 60, 120, 90, 110, 90, 90, 90, 90, 450 },  // 2
-{ 70, 90, 60, 120, 60,  55, 135, 44, 136, 45, 118, 120, 60, 120, 90, 110, 90, 90, 90, 90, 150 },  // 3
-{ 70, 90, 60, 120, 60,  55, 165, 44, 136, 15, 118, 120, 60, 120, 90, 110, 90, 90, 90, 90, 250 },  // 4
-{ 70, 90, 60, 120, 60,  55, 145, 44, 136, 35, 118, 120, 60, 120, 90, 110, 90, 90, 90, 90, 250 },  // 5
-{ 70, 90, 60, 120, 60,  55, 165, 44, 136, 15, 118, 120, 60, 120, 90, 110, 90, 90, 90, 90, 250 },  // 6
-{ 70, 90, 60, 120, 60,  55, 145, 44, 136, 35, 118, 120, 60, 120, 90, 110, 90, 90, 90, 90, 250 },  // 7
-{ 70, 90, 60, 120, 60,  55, 165, 44, 136, 15, 118, 120, 60, 120, 90, 110, 90, 90, 90, 90, 250 },  // 8
-{ 70, 90, 60, 120, 60,  55, 145, 44, 136, 35, 118, 120, 60, 120, 90, 110, 90, 90, 90, 90, 250 },  // 9
-{ 70, 90, 60, 120, 60, 145, 135, 90,  90, 45,  35, 120, 60, 120, 90, 110, 90, 90, 90, 90, 500 }   // 10
+// 0   1   2    3   4    5    6   7    8   9   10   11  12   13  14   15  16  17  18  19 10ms
+{ 70, 90, 60, 120, 60, 145, 135, 90,  90, 45,  35, 120, 60, 120, 90, 110, 90, 90, 90, 90,  5 },  // 1
+{ 70, 90, 60, 120, 60,  55, 135, 90,  90, 45, 118, 120, 60, 120, 90, 110, 90, 90, 90, 90, 45 },  // 2
+{ 70, 90, 60, 120, 60,  55, 135, 44, 136, 45, 118, 120, 60, 120, 90, 110, 90, 90, 90, 90, 15 },  // 3
+{ 70, 90, 60, 120, 60,  55, 165, 44, 136, 15, 118, 120, 60, 120, 90, 110, 90, 90, 90, 90, 25 },  // 4
+{ 70, 90, 60, 120, 60,  55, 145, 44, 136, 35, 118, 120, 60, 120, 90, 110, 90, 90, 90, 90, 25 },  // 5
+{ 70, 90, 60, 120, 60,  55, 165, 44, 136, 15, 118, 120, 60, 120, 90, 110, 90, 90, 90, 90, 25 },  // 6
+{ 70, 90, 60, 120, 60,  55, 145, 44, 136, 35, 118, 120, 60, 120, 90, 110, 90, 90, 90, 90, 25 },  // 7
+{ 70, 90, 60, 120, 60,  55, 165, 44, 136, 15, 118, 120, 60, 120, 90, 110, 90, 90, 90, 90, 25 },  // 8
+{ 70, 90, 60, 120, 60,  55, 145, 44, 136, 35, 118, 120, 60, 120, 90, 110, 90, 90, 90, 90, 25 },  // 9
+{ 70, 90, 60, 120, 60, 145, 135, 90,  90, 45,  35, 120, 60, 120, 90, 110, 90, 90, 90, 90, 50 }   // 10
 };
 
 void setAngle(uint8_t servoIndex, uint8_t servoAngle) {
@@ -89,7 +89,7 @@ void servoProgramIdle() {
 void servoProgramRun(uint8_t iMatrix[][SERVOS + 1], uint8_t iSteps) {
   int tmpa, tmpb, tmpc;
   for(uint8_t mainLoopIndex = 0; mainLoopIndex < iSteps; mainLoopIndex++) {
-    int interTotalTime = iMatrix[mainLoopIndex][SERVOS] + (int8_t)EEPROM.read(SERVOS);
+    int interTotalTime = iMatrix[mainLoopIndex][SERVOS] * BASEDELAYTIME + (int8_t)EEPROM.read(SERVOS);
     int interDelayCounter = interTotalTime / BASEDELAYTIME;
     for(uint8_t interStepLoop = 0; interStepLoop < interDelayCounter; interStepLoop++) {
       for(uint8_t servoIndex = 0; servoIndex < SERVOS; servoIndex++) {
@@ -112,7 +112,7 @@ void servoProgramRun(uint8_t iMatrix[][SERVOS + 1], uint8_t iSteps) {
       }
       delay(BASEDELAYTIME);
     }
-    for(uint8_t i = 0; i < SERVOS + 1; i++) {
+    for(uint8_t i = 0; i < SERVOS; i++) {
       servoPosition[i] = iMatrix[mainLoopIndex][i] + (int8_t)EEPROM.read(i);
     }
   }
@@ -705,7 +705,6 @@ void setup() {
     servoPosition[i] = idlePosition[i] + (int8_t)EEPROM.read(i);
     setAngle(i, servoPosition[i]);
   }
-  servoPosition[SERVOS] = 0;
   delay(1000);
 }
 
