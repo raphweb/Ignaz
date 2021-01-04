@@ -3,6 +3,8 @@
 #include <WiFi.h>
 #include <WebServer.h>
 #include <Preferences.h>
+#include <array>
+#include <vector>
 
 #define PWM_SERVOS 16
 #define GPIO_SERVOS 4
@@ -49,52 +51,110 @@ uint8_t isrServo[GPIO_SERVOS];
 
 uint8_t servoPosition[SERVOS];
 
+typedef struct {
+  const uint8_t index;
+  const uint8_t angle;
+} servo_angle_t;
+
+typedef struct {
+  const uint8_t moveTime;
+  const std::vector<servo_angle_t> servoAngles;
+} servo_positions_t;
+
 const uint8_t zeroPosition[SERVOS + 1] PROGMEM = {
 // 0   1   2    3   4    5   6   7   8    9  10   11  12   13  14   15  16  17  18  19 ms
   70, 90, 60, 120, 60, 145, 60, 90, 90, 120, 35, 120, 60, 120, 90, 110, 90, 90, 90, 90, 0
 };
 
-const uint8_t idlePosition[SERVOS + 1] PROGMEM = {
-// 0   1   2    3   4    5    6   7   8   9  10   11  12   13  14   15  16  17  18  19 ms
-  70, 90, 60, 120, 60, 145, 145, 90, 90, 35, 35, 120, 60, 120, 90, 110, 90, 90, 90, 90, 0
-};
+const std::vector<servo_angle_t> idlePosition PROGMEM = {{
+{0,  70}, {1,   90}, {2,  60}, {3,  120}, {4,  60}, {5,  145}, {6, 145}, {7,  90}, {8,  90}, {9,  35},
+{10, 35}, {11, 120}, {12, 60}, {13, 120}, {14, 90}, {15, 110}, {16, 90}, {17, 90}, {18, 90}, {19, 90}
+}};
 
-const uint8_t moveForwardSteps = 15;
-uint8_t moveForward[moveForwardSteps][SERVOS + 1] PROGMEM = {
-// 0    1    2    3   4    5    6   7    8   9  10   11   12   13  14   15  16  17  18  19 10ms
-{ 70,  90,  60, 120, 60, 145, 145, 90,  90, 35, 35, 120,  60, 120, 90, 110, 90, 90, 90, 90, 50 }, //  1
-{ 60,  90,  60, 120, 55, 145, 135, 80, 100, 45, 35, 109,  90,  60, 60, 100, 90, 90, 90, 90, 20 }, //  2
-{ 60,  90,  60, 120, 57, 131, 130, 80, 100, 50, 16, 111, 100,  80, 80, 100, 90, 90, 90, 90, 35 }, //  3
-{ 80, 110,  80, 115, 68, 117, 130, 80, 100, 50, 20, 123,  80, 110, 90, 120, 90, 90, 90, 90, 25 }, //  4
-{ 80, 120, 120,  90, 69, 145, 130, 80, 100, 50, 35, 123,  60, 120, 90, 120, 90, 90, 90, 90, 20 }, //  5
-{ 80, 100, 100,  80, 69, 164, 130, 80, 100, 50, 49, 123,  60, 120, 90, 120, 90, 90, 90, 90, 35 }, //  6
-{ 60,  90,  70, 100, 57, 160, 130, 80, 100, 50, 63, 112,  65, 100, 70, 100, 90, 90, 90, 90, 25 }, //  7
-{ 60,  90,  60, 120, 58, 145, 130, 80, 100, 50, 35, 111,  90,  60, 60, 100, 90, 90, 90, 90, 25 }, //  8
-{ 60,  90,  60, 120, 57, 131, 130, 80, 100, 50, 16, 111, 100,  80, 80, 100, 90, 90, 90, 90, 35 }, //  3
-{ 80, 110,  80, 115, 68, 117, 130, 80, 100, 50, 20, 123,  80, 110, 90, 120, 90, 90, 90, 90, 25 }, //  4
-{ 80, 120, 120,  90, 69, 145, 130, 80, 100, 50, 35, 123,  60, 120, 90, 120, 90, 90, 90, 90, 20 }, //  5
-{ 80, 100, 100,  80, 69, 164, 130, 80, 100, 50, 49, 123,  60, 120, 90, 120, 90, 90, 90, 90, 35 }, //  6
-{ 60,  90,  70, 100, 57, 160, 130, 80, 100, 50, 63, 112,  65, 100, 70, 100, 90, 90, 90, 90, 25 }, //  7
-{ 60,  90,  60, 120, 58, 145, 130, 80, 100, 50, 35, 111,  90,  60, 60, 100, 90, 90, 90, 90, 25 }, //  8
-{ 70,  90,  60, 120, 60, 145, 145, 90,  90, 35, 35, 120,  60, 120, 90, 110, 90, 90, 90, 90, 50 }  //  1
-};
+const std::array<const servo_positions_t, 14> moveForward PROGMEM = {{
+// transition from idle
+{ 20, {{0, 60}, {6, 130}, {7, 80}, {8, 100}, {9, 50}, {11, 110}, {12, 90}, {13, 60}, {14, 60}, {15, 100}} },
+// first pair of steps
+{ 35, {                                                 {5, 131}, {10, 15},            {12, 100}, {13,  80}, {14, 80}} },
+{ 25, {{0,  80}, {1, 110}, {2,  80}, {3, 115}, {4, 70}, {5, 117}, {10, 20}, {11, 125}, {12,  80}, {13, 110}, {14, 90}, {15, 120}} },
+{ 20, {          {1, 120}, {2, 120}, {3,  90},          {5, 145}, {10, 35},            {12,  60}, {13, 120}} },
+{ 35, {          {1, 100}, {2, 100}, {3,  80},          {5, 164}, {10, 50}} },
+{ 25, {{0,  60}, {1,  90}, {2,  70}, {3, 100}, {4, 55}, {5, 160}, {10, 65}, {11, 110}, {12,  65}, {13, 100}, {14, 70}, {15, 100}} },
+{ 25, {                    {2,  60}, {3, 120},          {5, 145}, {10, 35},            {12,  90}, {13,  60}, {14, 60}} },
+// second pair of steps
+{ 35, {                                                 {5, 131}, {10, 15},            {12, 100}, {13,  80}, {14, 80}} },
+{ 25, {{0,  80}, {1, 110}, {2,  80}, {3, 115}, {4, 70}, {5, 117}, {10, 20}, {11, 125}, {12,  80}, {13, 110}, {14, 90}, {15, 120}} },
+{ 20, {          {1, 120}, {2, 120}, {3,  90},          {5, 145}, {10, 35},            {12,  60}, {13, 120}} },
+{ 35, {          {1, 100}, {2, 100}, {3,  80},          {5, 164}, {10, 50}} },
+{ 25, {{0,  60}, {1,  90}, {2,  70}, {3, 100}, {4, 55}, {5, 160}, {10, 65}, {11, 110}, {12,  65}, {13, 100}, {14, 70}, {15, 100}} },
+{ 25, {                    {2,  60}, {3, 120},          {5, 145}, {10, 35},            {12,  90}, {13,  60}, {14, 60}} },
+// transition back to idle
+{ 35 }
+}};
 
-const uint8_t wavingSteps = 9;
-uint8_t waving[wavingSteps][SERVOS + 1] PROGMEM = {
-// 0   1   2    3   4    5    6    7   8   9   10   11  12   13  14   15   16  17  18  19 10ms
-{ 70, 90, 60, 120, 60, 145, 145,  90, 70, 85, 135, 120, 60, 120, 90, 110,  60, 90, 90, 90, 50 },
-{ 70, 90, 60, 120, 60, 145, 145,  90, 90, 35, 135, 120, 60, 120, 90, 110,  60, 90, 90, 90, 30 },
-{ 70, 90, 60, 120, 60, 145, 145,  90, 70, 85, 135, 120, 60, 120, 90, 110,  60, 90, 90, 90, 30 },
-{ 70, 90, 60, 120, 60, 145, 145,  90, 90, 35, 135, 120, 60, 120, 90, 110,  60, 90, 90, 90, 30 },
-{ 70, 90, 60, 120, 60,  45,  95, 110, 90, 35,  35, 120, 60, 120, 90, 110, 120, 90, 90, 90, 50 },
-{ 70, 90, 60, 120, 60,  45, 125,  90, 90, 35,  35, 120, 60, 120, 90, 110, 120, 90, 90, 90, 30 },
-{ 70, 90, 60, 120, 60,  45,  95, 110, 90, 35,  35, 120, 60, 120, 90, 110, 120, 90, 90, 90, 30 },
-{ 70, 90, 60, 120, 60,  45, 125,  90, 90, 35,  35, 120, 60, 120, 90, 110, 120, 90, 90, 90, 30 },
-{ 70, 90, 60, 120, 60, 145, 145,  90, 90, 35,  35, 120, 60, 120, 90, 110,  90, 90, 90, 90, 80 }
-};
+const std::array<const servo_positions_t, 4> bow PROGMEM = {{
+{ 50, {{5, 165}, {6, 125}, {7, 50}, {8, 150}, {10, 115}} },
+{ 50, {{1, 75}, {3, 70}, {12, 110}, {14, 105}} },
+{ 100 },
+{ 80 }
+}};
 
-const uint8_t clapHandsSteps = 10;
-uint8_t clapHands[clapHandsSteps][SERVOS + 1] PROGMEM = {
+const std::array<const servo_positions_t, 9> waving PROGMEM = {{
+{ 50, {{8, 70}, {9, 85}, {10, 135}, {16, 60}} },
+{ 30, {{8, 90}, {9, 35}} },
+{ 30, {{8, 70}, {9, 85}} },
+{ 30, {{8, 90}, {9, 35}} },
+{ 50, {{5, 45}, {6, 95}, {7, 110}, {10, 35}, {16, 120}} },
+{ 30, {{6, 125}, {7, 90}} },
+{ 30, {{6, 95}, {7, 110}} },
+{ 30, {{6, 125}, {7, 90}} },
+{ 80 }
+}};
+
+const std::array<std::array<uint8_t, (SERVOS + 1)>, 7> apache PROGMEM = {{
+// 0   1   2    3   4    5    6   7    8   9   10   11  12   13  14   15   16  17  18  19 10ms
+{ 80, 90, 60, 120, 70, 145, 115, 45,  90, 95,  35, 125, 60, 120, 90, 120,  90, 90, 90, 90, 50 },
+{ 80, 90, 60, 120, 70, 145, 115, 45,  90, 95,  35, 125, 60, 120, 90, 125,  90, 90, 90, 90, 30 },
+{ 80, 90, 60, 120, 70, 145, 115, 45, 150, 25, 115, 110, 60, 120, 90, 130,  90, 90, 90, 90, 50 },
+{ 80, 90, 60, 120, 70, 145, 115, 45, 150, 25, 115, 110, 60, 120, 90, 130, 120, 90, 90, 90, 80 },
+{ 80, 90, 60, 120, 70, 145, 115, 45,  90, 95,  35, 125, 60, 120, 90, 125, 120, 90, 90, 90, 60 },
+{ 80, 90, 60, 120, 70, 145, 115, 45,  90, 95,  35, 125, 60, 120, 90, 120,  90, 90, 90, 90, 50 },
+{ 70, 90, 60, 120, 60, 145, 145, 90,  90, 35,  35, 120, 60, 120, 90, 110,  90, 90, 90, 90, 80 }
+}};
+
+const std::array<std::array<uint8_t, (SERVOS + 1)>, 12> balance PROGMEM = {{
+// 0   1   2    3   4    5    6   7   8    9  10   11  12   13  14   15   16  17  18  19 10ms
+{ 60, 90, 60, 120, 55, 145,  60, 90, 90, 120, 35, 110, 60, 120, 90, 100,  90, 90, 90, 90, 50 },
+{ 60, 90, 60, 120, 55,  95,  60, 90, 90, 120, 85, 110, 60, 120, 95, 100,  90, 90, 90, 90, 30 },
+{ 55, 90, 60, 120, 70,  95,  60, 90, 90, 120, 85, 110, 60, 120, 95, 100,  90, 90, 90, 90, 50 },
+{ 55, 90, 60, 120, 70,  95,  60, 90, 90, 120, 85, 110, 60, 120, 95, 100,  90, 90, 90, 90, 60 },
+{ 55, 70, 60,  60, 70,  95,  60, 90, 90, 120, 85, 110, 60, 120, 95, 100,  90, 90, 90, 90, 90 },
+{ 55, 70, 60,  60, 70,  95,  40, 90, 90, 140, 85, 110, 60, 120, 95, 100,  60, 90, 90, 90, 50 },
+{ 55, 70, 60,  60, 70,  95,  80, 90, 90, 100, 85, 110, 60, 120, 95, 100, 120, 90, 90, 90, 50 },
+{ 55, 70, 60,  60, 70,  95,  40, 90, 90, 140, 85, 110, 60, 120, 95, 100,  60, 90, 90, 90, 50 },
+{ 55, 70, 60,  60, 70,  95,  80, 90, 90, 100, 85, 110, 60, 120, 95, 100, 120, 90, 90, 90, 50 },
+{ 55, 70, 60,  60, 70,  95,  60, 90, 90, 120, 85, 110, 60, 120, 95, 100,  90, 90, 90, 90, 50 },
+{ 55, 90, 60, 120, 70,  95,  60, 90, 90, 120, 85, 110, 60, 120, 95, 100,  90, 90, 90, 90, 80 },
+{ 70, 90, 60, 120, 60, 145, 145, 90, 90,  35, 35, 120, 60, 120, 90, 110,  90, 90, 90, 90, 80 }
+}};
+
+const std::array<std::array<uint8_t, (SERVOS + 1)>, 12> warmUp PROGMEM = {{
+// 0    1    2    3   4    5    6   7    8    9   10   11   12   13  14   15   16  17  18  19 10ms
+{ 70,  90,  60, 120, 60, 145, 105, 30, 150,  75,  35, 120,  60, 120, 90, 110,  90, 90, 90, 90, 80 },
+{ 80,  90,  60, 120, 70, 145, 105, 30,  90, 125,  35, 125,  60, 120, 90, 120,  60, 90, 90, 90, 80 },
+{ 80,  90,  60, 120, 70, 145, 105, 30,  90, 125,  35, 125,  60, 120, 90, 120,  60, 90, 90, 90, 50 },
+{ 60,  90,  60, 120, 55, 145,  55, 90, 150,  75,  35, 110,  60, 120, 90, 100, 120, 90, 90, 90, 80 },
+{ 60,  90,  60, 120, 55, 145,  55, 90, 150,  75,  35, 110,  60, 120, 90, 100, 120, 90, 90, 90, 50 },
+{ 70,  90,  60, 120, 60, 145, 105, 30, 150,  75,  35, 120,  60, 120, 90, 110,  90, 90, 90, 90, 50 },
+{ 70, 117, 125,  77, 60,  60, 145, 90,  90,  50, 115, 120, 100,  55, 63, 110,  90, 90, 90, 90, 80 },
+{ 70, 117, 125,  77, 60,  60, 145, 90,  90,  50, 115, 120, 100,  55, 63, 110,  90, 90, 90, 90, 30 },
+{ 70,  90,  60, 120, 60, 145, 105, 30, 150,  75,  35, 120,  60, 120, 90, 110,  90, 90, 90, 90, 50 },
+{ 70, 117, 125,  77, 60,  60, 145, 90,  90,  50, 115, 120, 100,  55, 63, 110,  90, 90, 90, 90, 80 },
+{ 70, 117, 125,  77, 60,  60, 145, 90,  90,  50, 115, 120, 100,  55, 63, 110,  90, 90, 90, 90, 30 },
+{ 70,  90,  60, 120, 60, 145, 145, 90,  90,  35,  35, 120,  60, 120, 90, 110,  90, 90, 90, 90, 80 }
+}};
+
+const std::array<std::array<uint8_t, (SERVOS + 1)>, 10> clapHands PROGMEM = {{
 // 0   1   2    3   4    5    6   7    8   9   10   11  12   13  14   15  16  17  18  19 10ms
 { 70, 90, 60, 120, 60, 145, 145, 90,  90, 35,  35, 120, 60, 120, 90, 110, 90, 90, 90, 90,  5 }, // 1
 { 70, 90, 60, 120, 60,  70, 145, 90,  90, 35, 110, 120, 60, 120, 90, 110, 90, 90, 90, 90, 45 }, // 2
@@ -106,7 +166,7 @@ uint8_t clapHands[clapHandsSteps][SERVOS + 1] PROGMEM = {
 { 70, 90, 60, 120, 60,  70, 165, 44, 136, 15, 110, 120, 60, 120, 90, 110, 90, 90, 90, 90, 25 }, // 4
 { 70, 90, 60, 120, 60,  70, 145, 44, 136, 35, 110, 120, 60, 120, 90, 110, 90, 90, 90, 90, 25 }, // 5
 { 70, 90, 60, 120, 60, 145, 145, 90,  90, 35,  35, 120, 60, 120, 90, 110, 90, 90, 90, 90, 45 }  // 1
-};
+}};
 
 void setAngle(uint8_t servoIndex, uint8_t servoAngle) {
   if ((servoIndex & 16) == 0) {
@@ -127,8 +187,8 @@ void servoProgramZero() {
 }
 
 void servoProgramIdle() {
-  for(uint8_t i = 0; i < SERVOS; i++) {
-    servoPosition[i] = idlePosition[i] + servoAdjustment[i];
+  for(const auto& servoAngle : idlePosition) {
+    servoPosition[servoAngle.index] = servoAngle.angle + servoAdjustment[servoAngle.index];
   }
   for(uint8_t iServo = 0; iServo < SERVOS; iServo++) {
     setAngle(iServo, servoPosition[iServo]);
@@ -136,9 +196,52 @@ void servoProgramIdle() {
   }
 }
 
-void servoProgramRun(uint8_t iMatrix[][SERVOS + 1], uint8_t iSteps) {
+template<std::size_t SIZE> void servoProgramRun(const std::array<const servo_positions_t, SIZE>& moveMatrix) {
+  uint8_t targetPositions[SERVOS];
+  for(uint8_t movInd = 0; movInd < SIZE; movInd++) {
+    const uint16_t moveTime = moveMatrix[movInd].moveTime * BASEDELAYTIME + servoDelay;
+    if (moveMatrix[movInd].servoAngles.empty() && movInd < SIZE - 1) {
+      // just delay, no servo movements
+      delay(moveTime);
+    } else {
+      const std::vector<servo_angle_t>& targetServoPositions =
+        (movInd == SIZE - 1) ?
+          idlePosition :   // for last servo positions go back to idle
+          moveMatrix[movInd].servoAngles;
+      // calculate target positions for use in the nested second loop
+      for(const auto& servoAngle : targetServoPositions) {
+        targetPositions[servoAngle.index] = servoAngle.angle + servoAdjustment[servoAngle.index];
+      }
+      const uint8_t stepCount = moveTime / BASEDELAYTIME;
+      for(uint8_t step = 0; step < stepCount; step++) {
+        for(const auto& servoAngle : targetServoPositions) {
+          const uint8_t originPosition = servoPosition[servoAngle.index];
+          const uint8_t targetPosition = targetPositions[servoAngle.index];
+          // absolute step size by which the angle shall be updated
+          const uint8_t stepDifference = map(BASEDELAYTIME * step, 0, moveTime, 0,
+            (originPosition > targetPosition ?
+              originPosition - targetPosition: targetPosition - originPosition));
+          // new angle to be set for this step
+          const uint8_t stepAngle = (originPosition > targetPosition ?
+            originPosition - stepDifference : originPosition + stepDifference);
+          // only set the step angle if we have not reached the target position yet
+          if ((originPosition <= targetPosition && stepAngle <= targetPosition) ||
+              (originPosition >  targetPosition && stepAngle >= targetPosition)) {
+            setAngle(servoAngle.index, stepAngle);
+          }
+        }
+        delay(BASEDELAYTIME);
+      }
+    }
+    for(const auto& servoAngle : moveMatrix[movInd].servoAngles) {
+      servoPosition[servoAngle.index] = servoAngle.angle + servoAdjustment[servoAngle.index];
+    }
+  }
+}
+
+template<std::size_t SIZE> void servoProgramRun(const std::array<std::array<uint8_t, SERVOS + 1>, SIZE>& iMatrix) {
   int tmpa, tmpb, tmpc;
-  for(uint8_t mainLoopIndex = 0; mainLoopIndex < iSteps; mainLoopIndex++) {
+  for(uint8_t mainLoopIndex = 0; mainLoopIndex < SIZE; mainLoopIndex++) {
     const int interTotalTime = iMatrix[mainLoopIndex][SERVOS] * BASEDELAYTIME + servoDelay;
     const int interDelayCounter = interTotalTime / BASEDELAYTIME;
     for(uint8_t interStepLoop = 0; interStepLoop < interDelayCounter; interStepLoop++) {
@@ -188,7 +291,7 @@ void disableServos() {
 void handleSave() {
   String key = server.arg("key");
   String value = server.arg("value");
-  uint8_t keyInt = key.toInt();
+  const uint8_t keyInt = key.toInt();
   
   delay(50);
   if (keyInt == 100) {
@@ -199,13 +302,13 @@ void handleSave() {
     preferences.putChar(SERVO_DELAY, 0);
     servoDelay = 0;
   } else if (keyInt < SERVOS) {
-    int8_t valueInt = value.toInt();
+    const int8_t valueInt = value.toInt();
     if (valueInt >= -125 && valueInt <= 125) {
       preferences.putChar(servos[keyInt].name, valueInt);
       servoAdjustment[keyInt] = valueInt;
     }
   } else if (keyInt == SERVOS) {
-    uint32_t valueUInt = value.toInt();
+    const uint32_t valueUInt = value.toInt();
     preferences.putUInt(SERVO_DELAY, valueUInt);
     servoDelay = valueUInt;
   }
@@ -228,8 +331,8 @@ void handleController() {
 
   if (servoName != "") {
     String ival = server.arg("value");
-    uint8_t servoId = servoName.toInt();
-    uint8_t servoAngle = ival.toInt() + servoAdjustment[servoId];
+    const uint8_t servoId = servoName.toInt();
+    const uint8_t servoAngle = ival.toInt() + servoAdjustment[servoId];
     setAngle(servoId, servoAngle);
   }
 
@@ -557,7 +660,7 @@ void handleIndex() {
 
   content += "<table align=center>";
   content += "<tr>";
-  content += "<td><button class=\"pms_btn\" style=\"background: #ffbf00;\" type=\"button\" onclick=\"controlPms(1)\">Bow</button></td>";
+  content += "<td><button class=\"pms_btn\" style=\"background: #ffbf00;\" type=\"button\" onclick=\"controlPms(1)\">Verbeugen</button></td>";
   content += "<td><button class=\"pms_btn\" style=\"background: #ffbf00;\" type=\"button\" onclick=\"controlPms(2)\">Winken</button></td>";
   content += "</tr>";
   content += "<tr>";
@@ -566,10 +669,10 @@ void handleIndex() {
   content += "</tr>";
   content += "<tr>";
   content += "<td><button class=\"pms_btn\" style=\"background: #ffbf00;\" type=\"button\" onclick=\"controlPms(4)\">Apache</button></td>";
-  content += "<td><button class=\"pms_btn\" style=\"background: #ffbf00;\" type=\"button\" onclick=\"controlPms(5)\">Balance</button></td>";
+  content += "<td><button class=\"pms_btn\" style=\"background: #ffbf00;\" type=\"button\" onclick=\"controlPms(5)\">Balancieren</button></td>";
   content += "</tr>";
   content += "<tr>";
-  content += "<td><button class=\"pms_btn\" style=\"background: #ffbf00;\" type=\"button\" onclick=\"controlPms(6)\">Warm-Up</button></td>";
+  content += "<td><button class=\"pms_btn\" style=\"background: #ffbf00;\" type=\"button\" onclick=\"controlPms(6)\">Aufw&auml;rmen</button></td>";
   content += "<td><button class=\"pms_btn\" style=\"background: #ffbf00;\" type=\"button\" onclick=\"controlPms(8)\">Dance</button></td>";
   content += "</tr>";
   content += "<tr>";
@@ -665,22 +768,25 @@ void setup() {
 
   server.begin();
   Serial.println("HTTP server started");
-  
+
+  // load preferences and idle position
+  for(uint8_t i = 0; i < SERVOS; i++) {
+    servoAdjustment[i] = preferences.getChar(servos[i].name);
+    servoPosition[i] = idlePosition[i].angle + servoAdjustment[i];
+  }
+  servoDelay = preferences.getUInt(SERVO_DELAY);
+
+  // init servos
   for(uint8_t i = 0; i < PWM_SERVOS; i++) {
     servo[i].attach(servos[i].pin, i, MIN_ANGLE, MAX_ANGLE, MIN_PULSE_LENGTH, MAX_PULSE_LENGTH);
+    setAngle(i, servoPosition[i]);
+    delay(60);
   }
   for(uint8_t i = PWM_SERVOS; i < SERVOS; i++) {
     isrServo[i & 3] = ESP32_ISR_Servos.setupServo(servos[i].pin, MIN_PULSE_LENGTH, MAX_PULSE_LENGTH);
-  }
-
-  // load idle position
-  for(uint8_t i = 0; i < SERVOS; i++) {
-    servoAdjustment[i] = preferences.getChar(servos[i].name);
-    servoPosition[i] = idlePosition[i] + servoAdjustment[i];
     setAngle(i, servoPosition[i]);
+    delay(60);
   }
-  servoDelay = preferences.getUInt(SERVO_DELAY);
-  delay(1000);
 }
 
 void loop() {
@@ -691,7 +797,7 @@ void loop() {
 
     switch (servoProgram) {
       case 1:
-        servoProgramRun(moveForward, moveForwardSteps);
+        servoProgramRun(moveForward);
         servoProgramIdle();
         break;
       case 97:
@@ -718,15 +824,48 @@ void loop() {
     Serial.println("servoProgramStack = " + String(servoProgramStack));
 
     switch (servoProgramStack) {
-      case 2:
-        servoProgramRun(waving, wavingSteps);
+      case 1:
+        servoProgramRun(bow);
         servoProgramIdle();
-        delay(300);
+        break;
+      case 2:
+        servoProgramRun(waving);
+        servoProgramIdle();
+        break;
+      case 4:
+        servoProgramRun(apache);
+        servoProgramIdle();
+        break;
+      case 5:
+        servoProgramRun(balance);
+        servoProgramIdle();
+        break;
+      case 6:
+        servoProgramRun(warmUp);
+        servoProgramIdle();
         break;
       case 7:
-        servoProgramRun(clapHands, clapHandsSteps);
+        servoProgramRun(clapHands);
         servoProgramIdle();
-        delay(300);
+        break;
+      case 99:
+        servoProgramRun(waving);
+        servoProgramIdle();
+        delay(500);
+        servoProgramRun(warmUp);
+        servoProgramIdle();
+        delay(500);
+        servoProgramRun(apache);
+        servoProgramIdle();
+        delay(500);
+        servoProgramRun(balance);
+        servoProgramIdle();
+        delay(500);
+        servoProgramRun(clapHands);
+        servoProgramIdle();
+        delay(500);
+        servoProgramRun(bow);
+        servoProgramIdle();
         break;
     }
     servoProgramStack = 0;
