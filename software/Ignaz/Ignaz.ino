@@ -61,10 +61,10 @@ typedef struct {
   const std::vector<servo_angle_t> servoAngles;
 } servo_positions_t;
 
-const uint8_t zeroPosition[SERVOS + 1] PROGMEM = {
-// 0   1   2    3   4    5   6   7   8    9  10   11  12   13  14   15  16  17  18  19 ms
-  70, 90, 60, 120, 60, 145, 60, 90, 90, 120, 35, 120, 60, 120, 90, 110, 90, 90, 90, 90, 0
-};
+const std::vector<servo_angle_t> zeroPosition PROGMEM = {{
+{0,  70}, {1,   90}, {2,  60}, {3,  120}, {4,  60}, {5,  145}, {6,  60}, {7,  90}, {8,  90}, {9, 120},
+{10, 35}, {11, 120}, {12, 60}, {13, 120}, {14, 90}, {15, 110}, {16, 90}, {17, 90}, {18, 90}, {19, 90}
+}};
 
 const std::vector<servo_angle_t> idlePosition PROGMEM = {{
 {0,  70}, {1,   90}, {2,  60}, {3,  120}, {4,  60}, {5,  145}, {6, 145}, {7,  90}, {8,  90}, {9,  35},
@@ -176,23 +176,11 @@ void setAngle(uint8_t servoIndex, uint8_t servoAngle) {
   }
 }
 
-void servoProgramZero() {
-  for(uint8_t i = 0; i < SERVOS; i++) {
-    servoPosition[i] = zeroPosition[i] + servoAdjustment[i];
-  }
-  for(uint8_t iServo = 0; iServo < SERVOS; iServo++) {
-    setAngle(iServo, servoPosition[iServo]);
-    delay(BASEDELAYTIME);
-  }
-}
-
-void servoProgramIdle() {
-  for(const auto& servoAngle : idlePosition) {
+void setServoPositions(const std::vector<servo_angle_t>& targetPositions, const uint8_t msDelayAfterEachSetAngle = BASEDELAYTIME) {
+  for(const auto& servoAngle : targetPositions) {
     servoPosition[servoAngle.index] = servoAngle.angle + servoAdjustment[servoAngle.index];
-  }
-  for(uint8_t iServo = 0; iServo < SERVOS; iServo++) {
-    setAngle(iServo, servoPosition[iServo]);
-    delay(BASEDELAYTIME);
+    setAngle(servoAngle.index, servoPosition[servoAngle.index]);
+    delay(msDelayAfterEachSetAngle);
   }
 }
 
@@ -407,9 +395,9 @@ void handleZero() {
     const String  background = htmlbackground[i-1];
     content += "<tr>";
     content += "<td><button class=\"pm_btn\" style=\"background: #" + htmlbackground[i-1] + ";\" type=\"button\" onclick=\"controlServo(" + firstServoStr +
-      ", " + String(zeroPosition[firstServoNo]) + ")\">" + servos[firstServoNo].name + "</button></td>";
+      ", " + String(zeroPosition[firstServoNo].angle) + ")\">" + servos[firstServoNo].name + "</button></td>";
     content += "<td><button class=\"pm_btn\" style=\"background: #" + htmlbackground[i-1] + ";\" type=\"button\" onclick=\"controlServo(" + secondServoStr +
-      ", " + String(zeroPosition[secondServoNo]) + ")\">" + servos[secondServoNo].name + "</button></td>";
+      ", " + String(zeroPosition[secondServoNo].angle) + ")\">" + servos[secondServoNo].name + "</button></td>";
     content += "</tr>";
     if (i == 9 || i == 6 || i == 1) {
       content += "</table>";
@@ -798,22 +786,22 @@ void loop() {
     switch (servoProgram) {
       case 1:
         servoProgramRun(moveForward);
-        servoProgramIdle();
+        setServoPositions(idlePosition);
         break;
       case 97:
         disableServos();
         break;
       case 98:
         enableServos();
-        servoProgramIdle();
+        setServoPositions(idlePosition);
         delay(300);
         break;
       case 99:
-        servoProgramIdle();
+        setServoPositions(idlePosition);
         delay(300);
         break;
       case 100:
-        servoProgramZero();
+        setServoPositions(zeroPosition);
         delay(300);
         break;
     }
@@ -826,48 +814,37 @@ void loop() {
     switch (servoProgramStack) {
       case 1:
         servoProgramRun(bow);
-        servoProgramIdle();
         break;
       case 2:
         servoProgramRun(waving);
-        servoProgramIdle();
         break;
       case 4:
         servoProgramRun(apache);
-        servoProgramIdle();
         break;
       case 5:
         servoProgramRun(balance);
-        servoProgramIdle();
         break;
       case 6:
         servoProgramRun(warmUp);
-        servoProgramIdle();
         break;
       case 7:
         servoProgramRun(clapHands);
-        servoProgramIdle();
         break;
       case 99:
         servoProgramRun(waving);
-        servoProgramIdle();
         delay(500);
         servoProgramRun(warmUp);
-        servoProgramIdle();
         delay(500);
         servoProgramRun(apache);
-        servoProgramIdle();
         delay(500);
         servoProgramRun(balance);
-        servoProgramIdle();
         delay(500);
         servoProgramRun(clapHands);
-        servoProgramIdle();
         delay(500);
         servoProgramRun(bow);
-        servoProgramIdle();
         break;
     }
+    setServoPositions(idlePosition);
     servoProgramStack = 0;
   }
 }
