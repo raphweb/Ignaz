@@ -1,3 +1,5 @@
+#include <Arduino.h>
+
 #include <Servo.h>
 #include <ESP32_ISR_Servo.h>
 #include <WiFi.h>
