@@ -1,6 +1,6 @@
-[submodule "software/libraries/ESP32_ISR_Servo"]
-	path = software/libraries/ESP32_ISR_Servo
+[submodule "software/lib/ESP32_ISR_Servo"]
+	path = software/lib/ESP32_ISR_Servo
 	url = https://github.com/khoih-prog/ESP32_ISR_Servo
-[submodule "software/libraries/ServoESP32"]
-	path = software/libraries/ServoESP32
+[submodule "software/lib/ServoESP32"]
+	path = software/lib/ServoESP32
 	url = https://github.com/RoboticsBrno/ServoESP32
